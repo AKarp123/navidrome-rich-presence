@@ -8,5 +8,9 @@
   },
   "peerDependencies": {
     "typescript": "^5"
+  },
+  "dependencies": {
+    "@xhayper/discord-rpc": "^1.2.2",
+    "subsonic-api": "^3.1.2"
   }
 }

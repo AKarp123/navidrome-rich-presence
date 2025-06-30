@@ -1,0 +1,8 @@
+const config = {
+    discord_client_id: "YOUR_DISCORD_CLIENT_ID",
+    subsonic_username: "YOUR_SUBSONIC_USERNAME",
+    subsonic_password: "YOUR_SUBSONIC_PASSWORD",
+    subsonic_url: "https://subsonic.example.com",
+}
+
+export default config;
