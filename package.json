@@ -9,8 +9,13 @@
   "peerDependencies": {
     "typescript": "^5"
   },
+  "scripts": {
+    "start": "bun run src/index.ts",
+    "dev": "bun run src/index.ts --watch"
+  },
   "dependencies": {
     "@xhayper/discord-rpc": "^1.2.2",
+    "discord-api-types": "^0.38.14",
     "subsonic-api": "^3.1.2"
   }
 }
