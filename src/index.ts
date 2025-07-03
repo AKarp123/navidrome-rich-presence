@@ -5,6 +5,7 @@ import { ActivityType } from 'discord-api-types/v9';
 import { sleep } from 'bun';
 import { readFileSync } from 'fs';
 import { dirname, join } from 'path';
+import { time } from 'console';
 
 const configPath = join(process.cwd(), 'config.json');
 const config = JSON.parse(readFileSync(configPath, 'utf-8'));
@@ -88,7 +89,7 @@ const main = async () => {
 				await client.user?.clearActivity();
 				nowPlayingID = undefined;
 			}
-
+			await sleep(2500);
 			continue;
 		}
 
@@ -99,15 +100,16 @@ const main = async () => {
 			nowPlayingID = undefined;
 			continue;
 		}
-
+		
+		if (curNowPlaying.id === nowPlayingID) {
+			continue; // If the track hasn't changed, skip updating the activity
+		}
+		
 		await fetchAlbumArt().catch(error => {
 			console.error('Error fetching album art:', error);
 			curNowPlaying!.smallImageUrl = 'https://imgur.com/hb3XPzA';
 		});
 
-		if (curNowPlaying.id === nowPlayingID) {
-			continue; // If the track hasn't changed, skip updating the activity
-		}
 
 		updateActivity(client, {
 			type: ActivityType.Listening,
