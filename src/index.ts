@@ -102,6 +102,7 @@ const main = async () => {
 		}
 		
 		if (curNowPlaying.id === nowPlayingID) {
+			await sleep(5000); // If the track hasn't changed, wait before checking again
 			continue; // If the track hasn't changed, skip updating the activity
 		}
 		
