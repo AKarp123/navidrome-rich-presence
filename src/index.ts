@@ -111,16 +111,16 @@ const main = async () => {
 			curNowPlaying!.smallImageUrl = 'https://imgur.com/hb3XPzA';
 		});
 
-
+		const formattedLargeImageText: string = `${curNowPlaying.albumArtist !== curNowPlaying.artist ? `${curNowPlaying.albumArtist} - ` : ''}${curNowPlaying.album} (${curNowPlaying.track} of ${curNowPlaying.totalTracks})`; //eslint-disable-line
 		updateActivity(client, {
-			type: ActivityType.Listening,
-			name: 'sfjdsfj',
-			state: `${curNowPlaying.title}\u200B`,
-			details: `${curNowPlaying.artist}\u200B` ,
+			type: 2,
+			name: `${(curNowPlaying.artist)!.substring(0, 128)}`,
+			state: `${(curNowPlaying.title)!.substring(0, 127)}\u200B`,
+			details: `${(curNowPlaying.artist)!.substring(0, 127)}\u200B`,
 			largeImageKey: curNowPlaying.smallImageUrl || 'https://i.imgur.com/hb3XPzA.png',
-			largeImageText: `${curNowPlaying.albumArtist !== curNowPlaying.artist ? `${curNowPlaying.albumArtist} - ` : ''}${curNowPlaying.album} (${curNowPlaying.track} of ${curNowPlaying.totalTracks})`, //eslint-disable-line
+			largeImageText: formattedLargeImageText.substring(0, 128), 
 			smallImageKey: 'https://i.imgur.com/hb3XPzA.png',
-			smallImageText: serverType.charAt(0).toUpperCase() + serverType.slice(1), // Capitalize the first letter of the server type
+			smallImageText: serverType.charAt(0).toUpperCase() + serverType.slice(1), 
 			startTimestamp: startTime!,
 			endTimestamp: startTime! + (curNowPlaying.duration! * 1000),
 
