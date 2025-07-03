@@ -13,7 +13,8 @@ const api = new SubsonicAPI({
 	},
 });
 
-let curNowPlaying: NowPlayingEntry & { albumArtist?: string, totalTracks?: number, smallImageUrl?: string, startTime?: number } | undefined;
+let curNowPlaying: NowPlayingEntry & { albumArtist?: string, totalTracks?: number, smallImageUrl?: string } | undefined; //eslint-disable-line
+let startTime: number | undefined; // This will hold the start time of the currently playing track
 let nowPlayingID: string | undefined; // This will hold the ID of the currently playing track, if any
 
 const fetchNowPlaying = async () => {
@@ -22,6 +23,11 @@ const fetchNowPlaying = async () => {
 		curNowPlaying = response.nowPlaying.entry?.find(entry => entry.username.toLowerCase() === config.subsonic_username.toLowerCase());
 		if (curNowPlaying) {
 			const album = await api.getAlbum({ id: curNowPlaying.albumId! });
+
+			if (curNowPlaying.id !== nowPlayingID) {
+				startTime = Date.now(); // Set the start time when a new track is detected
+			}
+
 			curNowPlaying.albumArtist = album.album.artist;
 			curNowPlaying.totalTracks = album.album.songCount;
 		}
@@ -42,13 +48,12 @@ const fetchAlbumArt = async () => {
 	});
 
 	curNowPlaying.smallImageUrl = albumInfo.smallImageUrl || '';
-	
 };
 
 const main = async () => {
 	try {
 		await api.ping();
-		console.log('Subsonic API is reachable.'); //eslint-disable-line no-console
+		console.log('Subsonic API is reachable.'); // eslint-disable-line no-console
 	} catch (error) {
 		console.error('Failed to reach Subsonic API:', error);
 		return;
@@ -67,7 +72,6 @@ const main = async () => {
 	}
 
 	while (client.isConnected) {
-		
 		await fetchNowPlaying().catch(error => {
 			console.error('Error fetching now playing:', error);
 		});
@@ -77,50 +81,45 @@ const main = async () => {
 				await client.user?.clearActivity();
 				nowPlayingID = undefined;
 			}
-			await sleep(5000);
+
 			continue;
 		}
 
-		if(Date.now() > curNowPlaying.startTime! + (curNowPlaying.duration! * 1000)) {
-			console.log('Track has ended, clearing activity.');
+		if (Date.now() > startTime! + (curNowPlaying.duration! * 1000)) {
+			console.log('Track has ended, clearing activity.'); // eslint-disable-line no-console
 			await client.user?.clearActivity();
 			curNowPlaying = undefined;
 			nowPlayingID = undefined;
-			await sleep(5000);
 			continue;
 		}
-
 
 		await fetchAlbumArt().catch(error => {
 			console.error('Error fetching album art:', error);
 			curNowPlaying!.smallImageUrl = 'https://imgur.com/hb3XPzA';
 		});
 
-		console.log(curNowPlaying);
-
-		if(curNowPlaying.id === nowPlayingID) {
-			console.warn('Track has not changed, skipping update.');
-			await sleep(15000); // Wait for the next update interval
+		if (curNowPlaying.id === nowPlayingID) {
 			continue; // If the track hasn't changed, skip updating the activity
 		}
+
 		updateActivity(client, {
 			type: ActivityType.Listening,
-			name: `sfjdsfj`,
+			name: 'sfjdsfj',
 			state: `${curNowPlaying.title}`,
 			details: curNowPlaying.artist,
 			largeImageKey: curNowPlaying.smallImageUrl || 'https://i.imgur.com/hb3XPzA.png',
-			largeImageText: `${curNowPlaying.albumArtist !== curNowPlaying.artist ? `${curNowPlaying.albumArtist} - ` : ''}${curNowPlaying.album} (${curNowPlaying.track} of ${curNowPlaying.totalTracks})`,
+			largeImageText: `${curNowPlaying.albumArtist !== curNowPlaying.artist ? `${curNowPlaying.albumArtist} - ` : ''}${curNowPlaying.album} (${curNowPlaying.track} of ${curNowPlaying.totalTracks})`, //eslint-disable-line
 			smallImageKey: 'https://i.imgur.com/hb3XPzA.png',
-			smallImageText: `Navidrome`,
-			startTimestamp: Date.now(),
-			endTimestamp: Date.now() + (curNowPlaying.duration! * 1000),
+			smallImageText: 'Navidrome',
+			startTimestamp: startTime!,
+			endTimestamp: startTime! + (curNowPlaying.duration! * 1000),
 
 		}).then(() => {
-			curNowPlaying!.startTime = Date.now();
+			console.log('Now Playing: ', curNowPlaying!.artist, ' - ', curNowPlaying!.title); // eslint-disable-line no-console
 			nowPlayingID = curNowPlaying!.id; // Update the now playing ID to the current track's ID
 		});
 
-		await sleep(15000); // Discord RPC has a 15 second limit for activity updates
+		await sleep(5000);
 	}
 
 	client.destroy();
@@ -129,3 +128,4 @@ const main = async () => {
 if (require.main === module) { // eslint-disable-line no-undef
 	main().catch(console.error);
 }
+
