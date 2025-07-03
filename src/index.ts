@@ -55,8 +55,11 @@ const fetchAlbumArt = async () => {
 };
 
 const main = async () => {
+	let serverType : string = "";
 	try {
-		await api.ping();
+		// @ts-ignore - Ignore since type isn't defined for some reason
+		const { type } = await api.ping();
+		serverType = type;
 		console.log('Subsonic API is reachable.'); // eslint-disable-line no-console
 	} catch (error) {
 		console.error('Failed to reach Subsonic API:', error);
@@ -114,7 +117,7 @@ const main = async () => {
 			largeImageKey: curNowPlaying.smallImageUrl || 'https://i.imgur.com/hb3XPzA.png',
 			largeImageText: `${curNowPlaying.albumArtist !== curNowPlaying.artist ? `${curNowPlaying.albumArtist} - ` : ''}${curNowPlaying.album} (${curNowPlaying.track} of ${curNowPlaying.totalTracks})`, //eslint-disable-line
 			smallImageKey: 'https://i.imgur.com/hb3XPzA.png',
-			smallImageText: 'Navidrome',
+			smallImageText: serverType.charAt(0).toUpperCase() + serverType.slice(1), // Capitalize the first letter of the server type
 			startTimestamp: startTime!,
 			endTimestamp: startTime! + (curNowPlaying.duration! * 1000),
 
