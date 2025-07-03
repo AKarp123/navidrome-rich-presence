@@ -1,15 +1,7 @@
 # subsonic-rpc
 
-To install dependencies:
-
-```bash
-bun install
-```
-
-To run:
-
-```bash
-bun run index.ts
-```
-
-This project was created using `bun init` in bun v1.2.16. [Bun](https://bun.sh) is a fast all-in-one JavaScript runtime.
+## Running
+1. Create a discord application at https://discord.com/developers/applications
+2. Download release for your platform from the releases page or build it yourself using the provided scripts.
+3. Copy `config.example.json` to `config.json` and fill in the required fields.
+4. Enjoy (Note: Discord must be running for this to work)
