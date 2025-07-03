@@ -1,9 +1,13 @@
-import config from './config';
 import { SubsonicAPI, type NowPlayingEntry } from 'subsonic-api';
 import { startRPC, updateActivity } from './rpc';
 import type { Client } from '@xhayper/discord-rpc';
 import { ActivityType } from 'discord-api-types/v9';
 import { sleep } from 'bun';
+import { readFileSync } from 'fs';
+import { dirname, join } from 'path';
+
+const configPath = join(process.cwd(), 'config.json');
+const config = JSON.parse(readFileSync(configPath, 'utf-8'));
 
 const api = new SubsonicAPI({
 	url: config.subsonic_url,
