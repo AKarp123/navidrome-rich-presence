@@ -115,8 +115,8 @@ const main = async () => {
 		updateActivity(client, {
 			type: ActivityType.Listening,
 			name: 'sfjdsfj',
-			state: `${curNowPlaying.title}`,
-			details: curNowPlaying.artist,
+			state: `${curNowPlaying.title}\u200B`,
+			details: `${curNowPlaying.artist}\u200B` ,
 			largeImageKey: curNowPlaying.smallImageUrl || 'https://i.imgur.com/hb3XPzA.png',
 			largeImageText: `${curNowPlaying.albumArtist !== curNowPlaying.artist ? `${curNowPlaying.albumArtist} - ` : ''}${curNowPlaying.album} (${curNowPlaying.track} of ${curNowPlaying.totalTracks})`, //eslint-disable-line
 			smallImageKey: 'https://i.imgur.com/hb3XPzA.png',
