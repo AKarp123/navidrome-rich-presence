@@ -1,9 +1,9 @@
 import config from './config';
-import {SubsonicAPI} from 'subsonic-api';
-import {startRPC, updateActivity} from './rpc';
-import type {Client} from '@xhayper/discord-rpc';
-import {ActivityType} from 'discord-api-types/v9';
-import {sleep} from 'bun';
+import { SubsonicAPI, type NowPlayingEntry } from 'subsonic-api';
+import { startRPC, updateActivity } from './rpc';
+import type { Client } from '@xhayper/discord-rpc';
+import { ActivityType } from 'discord-api-types/v9';
+import { sleep } from 'bun';
 
 const api = new SubsonicAPI({
 	url: config.subsonic_url,
@@ -13,14 +13,29 @@ const api = new SubsonicAPI({
 	},
 });
 
+let curNowPlaying: NowPlayingEntry & { smallImageUrl? : string} | undefined;
+
 const fetchNowPlaying = async () => {
 	try {
 		const response = await api.getNowPlaying();
-		return response;
+		curNowPlaying = response.nowPlaying.entry?.find(entry => entry.username === config.subsonic_username);
 	} catch (error) {
 		console.error('Error fetching now playing:', error);
 		throw error;
 	}
+};
+
+const fetchAlbumArt = async () => {
+	if (!curNowPlaying || curNowPlaying.albumId === undefined) {
+		console.warn('No currently playing track to fetch album art for.');
+		return '';
+	}
+
+	const { albumInfo } = await api.getAlbumInfo({
+		id: curNowPlaying.albumId,
+	});
+
+	return albumInfo?.smallImageUrl || '';
 };
 
 const main = async () => {
@@ -32,19 +47,6 @@ const main = async () => {
 		return;
 	}
 
-	// SetInterval(async () => {
-	//     fetchNowPlaying().then((response) => {
-	//         if (response.nowPlaying.entry && response.nowPlaying.entry.length > 0) {
-	//             let userNowPlaying = response.nowPlaying.entry.filter((entry) => entry.username.toLowerCase() === config.subsonic_username.toLowerCase())[0];
-	//             if (userNowPlaying) {
-	//                 console.log(`Now Playing: ${userNowPlaying.title} by ${userNowPlaying.artist} (${userNowPlaying.album})`);
-	//             }
-	//         }
-	//         else {
-	//             console.log("No current track playing for the user.");
-	//         }
-	//     })
-	// }, 1000);
 	let client : Client | undefined;
 	try {
 		client = startRPC(config.discord_client_id);
@@ -60,10 +62,14 @@ const main = async () => {
 		type: ActivityType.Listening,
 	});
 
+	while (!client.isConnected) {
+		await sleep(1000);
+	}
+
 	await sleep(5000);
 	client.destroy();
 };
 
-if (require.main === module) {
+if (require.main === module) { // eslint-disable-line no-undef
 	main().catch(console.error);
 }
