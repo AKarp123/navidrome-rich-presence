@@ -1,11 +1,9 @@
 import { SubsonicAPI, type NowPlayingEntry } from 'subsonic-api';
 import { startRPC, updateActivity } from './rpc';
 import type { Client } from '@xhayper/discord-rpc';
-import { ActivityType } from 'discord-api-types/v9';
 import { sleep } from 'bun';
 import { readFileSync } from 'fs';
-import { dirname, join } from 'path';
-import { time } from 'console';
+import { join } from 'path';
 
 const configPath = join(process.cwd(), 'config.json');
 const config = JSON.parse(readFileSync(configPath, 'utf-8'));
@@ -27,14 +25,23 @@ const fetchNowPlaying = async () => {
 		const response = await api.getNowPlaying();
 		curNowPlaying = response.nowPlaying.entry?.find(entry => entry.username.toLowerCase() === config.subsonic_username.toLowerCase());
 		if (curNowPlaying) {
-			const album = await api.getAlbum({ id: curNowPlaying.albumId! });
+			const { album } = await api.getAlbum({ id: curNowPlaying.albumId! });
 
 			if (curNowPlaying.id !== nowPlayingID) {
 				startTime = Date.now(); // Set the start time when a new track is detected
 			}
 
-			curNowPlaying.albumArtist = album.album.artist;
-			curNowPlaying.totalTracks = album.album.songCount;
+			if (album.song) {
+				for (let i = 0; i < album.song.length; i++) {
+					if (album.song[i]!.id === curNowPlaying.id) {
+						curNowPlaying.track = i + 1;
+						break;
+					}
+				}
+			}
+
+			curNowPlaying.albumArtist = album.artist;
+			curNowPlaying.totalTracks = album.songCount;
 		}
 	} catch (error) {
 		console.error('Error fetching now playing:', error);
@@ -56,7 +63,7 @@ const fetchAlbumArt = async () => {
 };
 
 const main = async () => {
-	let serverType : string = "";
+	let serverType : string = '';
 	try {
 		// @ts-ignore - Ignore since type isn't defined for some reason
 		const { type } = await api.ping();
@@ -89,38 +96,45 @@ const main = async () => {
 				await client.user?.clearActivity();
 				nowPlayingID = undefined;
 			}
+
 			await sleep(2500);
 			continue;
 		}
 
 		if (Date.now() > startTime! + (curNowPlaying.duration! * 1000)) {
+			if (!nowPlayingID) { // If already cleared, continue
+				await sleep(1000);
+				continue;
+			}
+
+			// If the track has ended, clear the activity
 			console.log('Track has ended, clearing activity.'); // eslint-disable-line no-console
 			await client.user?.clearActivity();
-			curNowPlaying = undefined;
 			nowPlayingID = undefined;
+			await sleep(1000);
 			continue;
 		}
-		
+
 		if (curNowPlaying.id === nowPlayingID) {
 			await sleep(5000); // If the track hasn't changed, wait before checking again
 			continue; // If the track hasn't changed, skip updating the activity
 		}
-		
+
 		await fetchAlbumArt().catch(error => {
 			console.error('Error fetching album art:', error);
 			curNowPlaying!.smallImageUrl = 'https://imgur.com/hb3XPzA';
 		});
 
-		const formattedLargeImageText: string = `${curNowPlaying.albumArtist !== curNowPlaying.artist ? `${curNowPlaying.albumArtist} - ` : ''}${curNowPlaying.album} (${curNowPlaying.track} of ${curNowPlaying.totalTracks})`; //eslint-disable-line
+		const formattedLargeImageText: string = `${curNowPlaying.albumArtist !== curNowPlaying.artist ? `${curNowPlaying.albumArtist} - ` : ''}${curNowPlaying.album} (${curNowPlaying.track || 1} of ${curNowPlaying.totalTracks || 1})`; //eslint-disable-line
 		updateActivity(client, {
 			type: 2,
 			name: `${(curNowPlaying.artist)!.substring(0, 128)}`,
 			state: `${(curNowPlaying.title)!.substring(0, 127)}\u200B`,
 			details: `${(curNowPlaying.artist)!.substring(0, 127)}\u200B`,
 			largeImageKey: curNowPlaying.smallImageUrl || 'https://i.imgur.com/hb3XPzA.png',
-			largeImageText: formattedLargeImageText.substring(0, 128), 
+			largeImageText: formattedLargeImageText.substring(0, 128),
 			smallImageKey: 'https://i.imgur.com/hb3XPzA.png',
-			smallImageText: serverType.charAt(0).toUpperCase() + serverType.slice(1), 
+			smallImageText: serverType.charAt(0).toUpperCase() + serverType.slice(1),
 			startTimestamp: startTime!,
 			endTimestamp: startTime! + (curNowPlaying.duration! * 1000),
 
