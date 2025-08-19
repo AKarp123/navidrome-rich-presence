@@ -1,4 +1,4 @@
-# subsonic-rpc
+# navidrome-rpc
 
 ## Running
 1. Create a discord application at https://discord.com/developers/applications 
