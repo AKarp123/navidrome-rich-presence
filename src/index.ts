@@ -32,6 +32,7 @@ const fetchNowPlaying = async () => {
 			}
 
 			if (album.song) {
+
 				for (let i = 0; i < album.song.length; i++) {
 					if (album.song[i]!.id === curNowPlaying.id) {
 						curNowPlaying.track = i + 1;
@@ -85,13 +86,13 @@ const main = async () => {
 	while (!client.isConnected) {
 		await sleep(1000);
 	}
-
+	let clearedStatus = false;
 	while (client.isConnected) {
 		await fetchNowPlaying().catch(error => {
 			console.error('Error fetching now playing:', error);
 		});
 		if (!curNowPlaying) {
-			if (nowPlayingID) {
+			if (nowPlayingID && !clearedStatus) {
 				console.warn('Clearing activity due to no current track.');
 				await client.user?.clearActivity();
 				nowPlayingID = undefined;
@@ -102,7 +103,7 @@ const main = async () => {
 		}
 
 		if (Date.now() > startTime! + (curNowPlaying.duration! * 1000)) {
-			if (!nowPlayingID) { // If already cleared, continue
+			if (clearedStatus) { // If already cleared, continue
 				await sleep(1000);
 				continue;
 			}
@@ -110,13 +111,13 @@ const main = async () => {
 			// If the track has ended, clear the activity
 			console.log('Track has ended, clearing activity.'); // eslint-disable-line no-console
 			await client.user?.clearActivity();
-			nowPlayingID = undefined;
+			clearedStatus = true;
 			await sleep(1000);
 			continue;
 		}
 
 		if (curNowPlaying.id === nowPlayingID) {
-			await sleep(5000); // If the track hasn't changed, wait before checking again
+			await sleep(5000); 
 			continue; // If the track hasn't changed, skip updating the activity
 		}
 
@@ -141,6 +142,7 @@ const main = async () => {
 		}).then(() => {
 			console.log('Now Playing: ', curNowPlaying!.artist, ' - ', curNowPlaying!.title); // eslint-disable-line no-console
 			nowPlayingID = curNowPlaying!.id; // Update the now playing ID to the current track's ID
+			clearedStatus = false;
 		});
 
 		await sleep(5000);
