@@ -1,7 +1,7 @@
 import { SubsonicAPI, type NowPlayingEntry } from 'subsonic-api';
 import { startRPC, updateActivity } from './rpc';
 import type { Client } from '@xhayper/discord-rpc';
-import { sleep } from 'bun';
+import { fetch, sleep } from 'bun';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 
@@ -32,7 +32,6 @@ const fetchNowPlaying = async () => {
 			}
 
 			if (album.song) {
-
 				for (let i = 0; i < album.song.length; i++) {
 					if (album.song[i]!.id === curNowPlaying.id) {
 						curNowPlaying.track = i + 1;
@@ -59,8 +58,19 @@ const fetchAlbumArt = async () => {
 	const { albumInfo } = await api.getAlbumInfo({
 		id: curNowPlaying.albumId,
 	});
+	if (!albumInfo || !albumInfo.smallImageUrl) {
+		console.warn('No album art found for the current track.');
+		curNowPlaying.smallImageUrl = 'https://imgur.com/hb3XPzA.png';
+		return;
+	}
 
-	curNowPlaying.smallImageUrl = albumInfo.smallImageUrl || '';
+	const res = await fetch(albumInfo.smallImageUrl).then(res => res.text());
+	if (res.indexOf('Artwork not found') !== -1) {
+		curNowPlaying.smallImageUrl = 'https://imgur.com/hb3XPzA.png';
+		return;
+	}
+
+	curNowPlaying.smallImageUrl = albumInfo.smallImageUrl;
 };
 
 const main = async () => {
@@ -86,6 +96,7 @@ const main = async () => {
 	while (!client.isConnected) {
 		await sleep(1000);
 	}
+
 	let clearedStatus = false;
 	while (client.isConnected) {
 		await fetchNowPlaying().catch(error => {
@@ -117,7 +128,7 @@ const main = async () => {
 		}
 
 		if (curNowPlaying.id === nowPlayingID) {
-			await sleep(5000); 
+			await sleep(5000);
 			continue; // If the track hasn't changed, skip updating the activity
 		}
 
