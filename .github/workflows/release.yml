@@ -36,7 +36,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
-          name: Release ${{ steps.get_version.outputs.VERSION }}
+          name: v${{ steps.get_version.outputs.VERSION }}
           body: |
             ## Release ${{ steps.get_version.outputs.VERSION }}
             
@@ -49,7 +49,7 @@ jobs:
             ### Installation
             1. Download the appropriate zip file for your platform
             2. Extract the zip file
-            3. Copy `config.example.json` to `config.json` and fill in your details
+            3. Open 'config.json' and fill in your login details and server address
             4. Run the executable
           files: |
             dist/*.zip
