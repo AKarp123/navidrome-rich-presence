@@ -1,6 +1,6 @@
 import { SubsonicAPI, type NowPlayingEntry } from 'subsonic-api';
 import { startRPC, updateActivity } from './rpc';
-import type { Client } from '@xhayper/discord-rpc';
+import { StatusDisplayType, type Client } from '@xhayper/discord-rpc';
 import { fetch, sleep } from 'bun';
 import { readFileSync } from 'fs';
 import { join } from 'path';
@@ -16,7 +16,7 @@ const api = new SubsonicAPI({
 	},
 });
 
-let curNowPlaying: NowPlayingEntry & { albumArtist?: string, totalTracks?: number, smallImageUrl?: string } | undefined; //eslint-disable-line
+let curNowPlaying: NowPlayingEntry & { albumArtist?: string, totalTracks?: number, smallImageUrl?: string, sampleRate?: number, bitDepth?: number} | undefined; //eslint-disable-line
 let startTime: number | undefined; // This will hold the start time of the currently playing track
 let nowPlayingID: string | undefined; // This will hold the ID of the currently playing track, if any
 
@@ -35,6 +35,13 @@ const fetchNowPlaying = async () => {
 				for (let i = 0; i < album.song.length; i++) {
 					if (album.song[i]!.id === curNowPlaying.id) {
 						curNowPlaying.track = i + 1;
+						// @ts-ignore-line - TODO: add types for this
+						curNowPlaying.bitDepth = album.song[i]!.bitDepth;
+						curNowPlaying.suffix = album.song[i]!.suffix;
+						// @ts-ignore-line - TODO: add types for this
+						curNowPlaying.sampleRate = album.song[i]!.samplingRate;
+
+						curNowPlaying.bitRate = album.song[i]!.bitRate;
 						break;
 					}
 				}
@@ -71,6 +78,14 @@ const fetchAlbumArt = async () => {
 	}
 
 	curNowPlaying.smallImageUrl = albumInfo.smallImageUrl;
+};
+
+const formatSmallImageText = (bitDepth: number, sampleRate: number, bitRate: number, suffix: string | undefined) => {
+	if (suffix === 'mp3') {
+		return bitRate + 'kbps';
+	}
+
+	return bitDepth + '/' + (sampleRate / 1000)!.toFixed(1) + 'kHz ' + bitRate + 'kbps';
 };
 
 const main = async () => {
@@ -140,15 +155,16 @@ const main = async () => {
 		const formattedLargeImageText: string = `${curNowPlaying.albumArtist !== curNowPlaying.artist ? `${curNowPlaying.albumArtist} - ` : ''}${curNowPlaying.album} (${curNowPlaying.track || 1} of ${curNowPlaying.totalTracks || 1})`; //eslint-disable-line
 		updateActivity(client, {
 			type: 2,
-			name: `${(curNowPlaying.artist)!.substring(0, 128)}`,
+			name: 'Navidrome',
 			state: `${(curNowPlaying.title)!.substring(0, 127)}\u200B`,
 			details: `${(curNowPlaying.artist)!.substring(0, 127)}\u200B`,
 			largeImageKey: curNowPlaying.smallImageUrl || 'https://i.imgur.com/hb3XPzA.png',
 			largeImageText: formattedLargeImageText.substring(0, 128),
 			smallImageKey: 'https://i.imgur.com/hb3XPzA.png',
-			smallImageText: serverType.charAt(0).toUpperCase() + serverType.slice(1),
+			smallImageText: serverType.charAt(0).toUpperCase() + serverType.slice(1) + ' | ' + curNowPlaying.suffix?.toUpperCase() + ' | ' + formatSmallImageText(curNowPlaying.bitDepth || 0, curNowPlaying.sampleRate || 48000, curNowPlaying.bitRate || 0, curNowPlaying.suffix),
 			startTimestamp: startTime!,
 			endTimestamp: startTime! + (curNowPlaying.duration! * 1000),
+			statusDisplayType: StatusDisplayType.DETAILS,
 
 		}).then(() => {
 			console.log('Now Playing: ', curNowPlaying!.artist, ' - ', curNowPlaying!.title); // eslint-disable-line no-console
