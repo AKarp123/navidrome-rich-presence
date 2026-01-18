@@ -2,8 +2,8 @@ name: Release
 
 on:
   push:
-    tags:
-      - 'v*' # Triggers on tags like v1.1.0, v2.0.0, etc.
+    branches:
+      - main
 
 jobs:
   build-and-release:
