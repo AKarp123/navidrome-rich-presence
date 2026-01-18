@@ -1,0 +1,57 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*' # Triggers on tags like v1.1.0, v2.0.0, etc.
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      
+      - name: Install dependencies
+        run: bun install
+      
+      - name: Build all platforms
+        run: bun run build
+      
+      - name: Get version from package.json
+        id: get_version
+        run: |
+          VERSION=$(grep -o '"version": "[^"]*"' package.json | cut -d'"' -f4)
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+      
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Release ${{ steps.get_version.outputs.VERSION }}
+          body: |
+            ## Release ${{ steps.get_version.outputs.VERSION }}
+            
+            ### Downloads
+            - **Windows x64**: `navidrome-rpc-win64.zip`
+            - **Linux x64**: `navidrome-rpc-linux64.zip`
+            - **Linux ARM64**: `navidrome-rpc-linux-arm64.zip`
+            - **macOS ARM64**: `navidrome-rpc-macos-arm64.zip`
+            
+            ### Installation
+            1. Download the appropriate zip file for your platform
+            2. Extract the zip file
+            3. Copy `config.example.json` to `config.json` and fill in your details
+            4. Run the executable
+          files: |
+            dist/*.zip
+          draft: false
+          prerelease: false
