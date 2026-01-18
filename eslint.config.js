@@ -12,8 +12,7 @@ export default defineConfig([
 			'no-await-in-loop': 'off',
 			'@stylistic/object-curly-spacing': ['error', 'always'],
 			'no-console': ['warn', { allow: ['warn', 'error'] }],
-			'max-depth': 'off'
-
+			'max-depth': 'off',
 		},
 		languageOptions: {
 			parser,

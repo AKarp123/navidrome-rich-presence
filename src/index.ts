@@ -82,10 +82,14 @@ const fetchAlbumArt = async () => {
 
 const formatSmallImageText = (bitDepth: number, sampleRate: number, bitRate: number, suffix: string | undefined) => {
 	if (suffix === 'mp3') {
-		return bitRate + 'kbps';
+		return '| ' + bitRate + 'kbps';
 	}
 
-	return bitDepth + '/' + (sampleRate / 1000)!.toFixed(1) + 'kHz ' + bitRate + 'kbps';
+	if (suffix === 'flac') {
+		return '| ' + bitDepth + '/' + (sampleRate / 1000)!.toFixed(1) + 'kHz';
+	}
+
+	return '';
 };
 
 const main = async () => {
@@ -161,7 +165,7 @@ const main = async () => {
 			largeImageKey: curNowPlaying.smallImageUrl || 'https://i.imgur.com/hb3XPzA.png',
 			largeImageText: formattedLargeImageText.substring(0, 128),
 			smallImageKey: 'https://i.imgur.com/hb3XPzA.png',
-			smallImageText: serverType.charAt(0).toUpperCase() + serverType.slice(1) + ' | ' + curNowPlaying.suffix?.toUpperCase() + ' | ' + formatSmallImageText(curNowPlaying.bitDepth || 0, curNowPlaying.sampleRate || 48000, curNowPlaying.bitRate || 0, curNowPlaying.suffix),
+			smallImageText: serverType.charAt(0).toUpperCase() + serverType.slice(1) + ' | ' + curNowPlaying.suffix?.toUpperCase() + formatSmallImageText(curNowPlaying.bitDepth || 0, curNowPlaying.sampleRate || 48000, curNowPlaying.bitRate || 0, curNowPlaying.suffix).trim(),
 			startTimestamp: startTime!,
 			endTimestamp: startTime! + (curNowPlaying.duration! * 1000),
 			statusDisplayType: StatusDisplayType.DETAILS,
