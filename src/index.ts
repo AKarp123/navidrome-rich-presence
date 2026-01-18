@@ -86,10 +86,10 @@ const formatSmallImageText = (bitDepth: number, sampleRate: number, bitRate: num
 	}
 
 	if (suffix === 'flac') {
-		return '| ' + bitDepth + '/' + (sampleRate / 1000)!.toFixed(1) + 'kHz';
+		return '| ' + bitDepth + '/' + (sampleRate / 1000)!.toFixed(1) + 'kHz ' + bitRate + 'kbps';
 	}
 
-	return '';
+	return `${suffix} ${bitRate}kbps`;
 };
 
 const main = async () => {
