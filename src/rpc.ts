@@ -1,4 +1,4 @@
-import { Client, type SetActivity } from '@xhayper/discord-rpc';
+import {Client, type SetActivity} from '@xhayper/discord-rpc';
 
 const startRPC = (discord_client_id: string) : Client => {
 	const client = new Client({
@@ -45,4 +45,4 @@ const clearActivity = async (client: Client) => {
 		});
 };
 
-export { startRPC, updateActivity, clearActivity };
+export {startRPC, updateActivity, clearActivity};
