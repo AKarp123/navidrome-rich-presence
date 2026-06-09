@@ -1,9 +1,9 @@
-import { SubsonicAPI, type NowPlayingEntry } from 'subsonic-api';
-import { startRPC, updateActivity } from './rpc';
-import { StatusDisplayType, type Client } from '@xhayper/discord-rpc';
-import { fetch, sleep } from 'bun';
-import { readFileSync } from 'fs';
-import { join } from 'path';
+import {SubsonicAPI, type NowPlayingEntry} from 'subsonic-api';
+import {startRPC, updateActivity} from './rpc';
+import {StatusDisplayType, type Client} from '@xhayper/discord-rpc';
+import {fetch, sleep} from 'bun';
+import {readFileSync} from 'fs';
+import {join} from 'path';
 
 const configPath = join(process.cwd(), 'config.json');
 const config = JSON.parse(readFileSync(configPath, 'utf-8'));
@@ -16,19 +16,26 @@ const api = new SubsonicAPI({
 	},
 });
 
-let curNowPlaying: NowPlayingEntry & { albumArtist?: string, totalTracks?: number, smallImageUrl?: string, sampleRate?: number, bitDepth?: number} | undefined; //eslint-disable-line
-let startTime: number | undefined; // This will hold the start time of the currently playing track
+let curNowPlaying: NowPlayingEntry & {albumArtist?: string, totalTracks?: number, smallImageUrl?: string, sampleRate?: number, bitDepth?: number, state?: 'starting' | 'playing' | 'paused' | 'stopped', positionMs?: number} | undefined;
+let startTime: number = Date.now(); // This will hold the start time of the currently playing track
 let nowPlayingID: string | undefined; // This will hold the ID of the currently playing track, if any
+let shouldUpdate = false;
 
 const fetchNowPlaying = async () => {
 	try {
 		const response = await api.getNowPlaying();
 		curNowPlaying = response.nowPlaying.entry?.find(entry => entry.username.toLowerCase() === config.subsonic_username.toLowerCase());
 		if (curNowPlaying) {
-			const { album } = await api.getAlbum({ id: curNowPlaying.albumId! });
+			const {album} = await api.getAlbum({id: curNowPlaying.albumId!});
 
 			if (curNowPlaying.id !== nowPlayingID) {
+				shouldUpdate = true;
 				startTime = Date.now(); // Set the start time when a new track is detected
+			}
+
+			if (curNowPlaying.positionMs !== undefined && (Math.abs((Date.now() - startTime) - curNowPlaying.positionMs) > 3000)) {
+				startTime = Date.now() - curNowPlaying.positionMs;
+				shouldUpdate = true;
 			}
 
 			if (album.song) {
@@ -62,7 +69,7 @@ const fetchAlbumArt = async () => {
 		return '';
 	}
 
-	const { albumInfo } = await api.getAlbumInfo({
+	const {albumInfo} = await api.getAlbumInfo({
 		id: curNowPlaying.albumId,
 	});
 	if (!albumInfo || !albumInfo.smallImageUrl) {
@@ -92,11 +99,25 @@ const formatSmallImageText = (bitDepth: number, sampleRate: number, bitRate: num
 	return `${suffix} ${bitRate}kbps`;
 };
 
+const formatLargeImageText = (
+	albumArtist: string | undefined,
+	artist: string | undefined,
+	album: string | undefined,
+	track: number | undefined,
+	totalTracks: number | undefined,
+) => {
+	if (albumArtist === artist) {
+		return `${album} (${track || 1} of ${totalTracks || 1})`;
+	}
+
+	return `${albumArtist} - ${album} (${track || 1} of ${totalTracks || 1})`;
+};
+
 const main = async () => {
 	let serverType : string = '';
 	try {
 		// @ts-ignore - Ignore since type isn't defined for some reason
-		const { type } = await api.ping();
+		const {type} = await api.ping();
 		serverType = type;
 		console.log('Subsonic API is reachable.'); // eslint-disable-line no-console
 	} catch (error) {
@@ -132,7 +153,20 @@ const main = async () => {
 			continue;
 		}
 
-		if (Date.now() > startTime! + (curNowPlaying.duration! * 1000)) {
+		if (curNowPlaying.state === 'paused') {
+			if (!clearedStatus) {
+				console.info('Track is paused.'); // eslint-disable-line no-console
+				clearedStatus = true;
+				nowPlayingID = undefined;
+				await client.user?.clearActivity();
+			}
+
+			await sleep(1000);
+			continue;
+		}
+
+		// Use legacy stop calculation if server doesn't support playback Report
+		if (curNowPlaying.state === undefined && (Date.now() > startTime! + (curNowPlaying.duration! * 1000))) {
 			if (clearedStatus) { // If already cleared, continue
 				await sleep(1000);
 				continue;
@@ -146,8 +180,8 @@ const main = async () => {
 			continue;
 		}
 
-		if (curNowPlaying.id === nowPlayingID) {
-			await sleep(5000);
+		if (!shouldUpdate) {
+			await sleep(1000);
 			continue; // If the track hasn't changed, skip updating the activity
 		}
 
@@ -156,16 +190,28 @@ const main = async () => {
 			curNowPlaying!.smallImageUrl = 'https://imgur.com/hb3XPzA';
 		});
 
-		const formattedLargeImageText: string = `${curNowPlaying.albumArtist !== curNowPlaying.artist ? `${curNowPlaying.albumArtist} - ` : ''}${curNowPlaying.album} (${curNowPlaying.track || 1} of ${curNowPlaying.totalTracks || 1})`; //eslint-disable-line
+		const formattedLargeImageText: string = formatLargeImageText(
+			curNowPlaying.albumArtist,
+			curNowPlaying.artist,
+			curNowPlaying.album,
+			curNowPlaying.track,
+			curNowPlaying.totalTracks,
+		);
 		updateActivity(client, {
 			type: 2,
-			name: 'Navidrome',
+			name: serverType.charAt(0).toUpperCase() + serverType.slice(1),
 			state: `${(curNowPlaying.title)!.substring(0, 127)}\u200B`,
 			details: `${(curNowPlaying.artist)!.substring(0, 127)}\u200B`,
 			largeImageKey: curNowPlaying.smallImageUrl || 'https://i.imgur.com/hb3XPzA.png',
 			largeImageText: formattedLargeImageText.substring(0, 128),
 			smallImageKey: 'https://i.imgur.com/hb3XPzA.png',
-			smallImageText: serverType.charAt(0).toUpperCase() + serverType.slice(1) + ' | ' + curNowPlaying.suffix?.toUpperCase() + ' ' + formatSmallImageText(curNowPlaying.bitDepth || 0, curNowPlaying.sampleRate || 48000, curNowPlaying.bitRate || 0, curNowPlaying.suffix).trim(),
+			smallImageText: `${serverType.charAt(0).toUpperCase() + serverType.slice(1)} | ${curNowPlaying.suffix ? curNowPlaying.suffix.toUpperCase() : ''} ${formatSmallImageText(
+				curNowPlaying.bitDepth || 0,
+				curNowPlaying.sampleRate || 48000,
+				curNowPlaying.bitRate || 0,
+				curNowPlaying.suffix,
+			).trim()}`.trim(),
+			smallImageUrl: 'https://github.com/AKarp123/navidrome-rich-presence',
 			startTimestamp: startTime!,
 			endTimestamp: startTime! + (curNowPlaying.duration! * 1000),
 			statusDisplayType: StatusDisplayType.DETAILS,
@@ -174,9 +220,10 @@ const main = async () => {
 			console.log('Now Playing: ', curNowPlaying!.artist, ' - ', curNowPlaying!.title); // eslint-disable-line no-console
 			nowPlayingID = curNowPlaying!.id; // Update the now playing ID to the current track's ID
 			clearedStatus = false;
+			shouldUpdate = false;
 		});
 
-		await sleep(5000);
+		await sleep(1000);
 	}
 
 	client.destroy();

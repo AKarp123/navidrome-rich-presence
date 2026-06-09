@@ -10,9 +10,9 @@ export default defineConfig([
 			'@typescript-eslint/naming-convention': 'off',
 			indent: ['error', 'tab'],
 			'no-await-in-loop': 'off',
-			'@stylistic/object-curly-spacing': ['error', 'always'],
 			'no-console': ['warn', { allow: ['warn', 'error'] }],
 			'max-depth': 'off',
+			'max-params': 'off'
 		},
 		languageOptions: {
 			parser,
