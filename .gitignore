@@ -39,3 +39,10 @@ config.json
 
 
 *.exe
+
+# Rust build output
+/target/
+/dist/
+
+# Python build helper cache
+__pycache__/
